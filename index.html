@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Editor Glifo Minecraft (Unifont)</title>
+<title>Minecraft Glyph Editor (Unifont)</title>
 <style>
   :root {
     --bg: #1b1b1f;
@@ -209,47 +209,45 @@
 <body>
 
   <h1>Editor Glifo Minecraft</h1>
-  <nav style="margin-bottom: 12px; font-size: 0.8rem;"><a href="generate.html" style="color: var(--accent); text-decoration: none;">Genera resource pack da JSON &rarr;</a></nav>
-  <p class="subtitle">Inserisci un'emoji o un codice hex: l'altro campo si calcola da solo e il glifo originale viene mostrato nella griglia di confronto. Disegna la tua versione nella griglia a sinistra ed esporta il JSON.</p>
+  <nav style="margin-bottom: 12px; font-size: 0.8rem;"><a href="generate.html" style="color: var(--accent); text-decoration: none;">Generate resource pack from JSON &rarr;</a></nav>
+  <p class="subtitle">Enter an emoji or a hex code: the other field updates automatically and the original glyph is shown in the comparison grid. Draw your version in the editable grid and export JSON.</p>
 
-  <div class="loading-banner" id="loading-banner">Caricamento dati Unifont in corso…</div>
+  <div class="loading-banner" id="loading-banner">Loading Unifont data…</div>
 
   <div class="panel">
     <label for="emoji-input">Emoji</label>
     <input type="text" id="emoji-input" placeholder="es. 📹" maxlength="8" disabled>
     <div class="field-status" id="emoji-status"></div>
 
-    <label for="hex-input">Codice hex (CODEPOINT:DATIHEX)</label>
+    <label for="hex-input">Hex code (CODEPOINT:HEXDATA)</label>
     <input type="text" id="hex-input" placeholder="es. 01F4F9:000000000002000C0FFC4E1A7E187FF87FF87FF84FF80FF80000000000000000" disabled>
     <div class="field-status" id="hex-status"></div>
 
-    <label for="label-input">Nome / descrizione (opzionale)</label>
+    <label for="label-input">Name / description (optional)</label>
     <input type="text" id="label-input" placeholder="es. simbolo più">
   </div>
 
   <div class="grid-area">
     <div class="grid-wrap">
-      <div class="grid-title">Disegno (modificabile)</div>
+      <div class="grid-title">Editable drawing</div>
       <div id="grid"></div>
       <div class="grid-dims" id="grid-dims">16 × 16</div>
     </div>
     <div class="grid-wrap">
-      <div class="grid-title">Glifo originale (sola lettura)</div>
+      <div class="grid-title">Original glyph (read only)</div>
       <div id="preview-grid"></div>
       <div class="grid-dims" id="preview-dims">—</div>
     </div>
   </div>
 
   <div class="toolbar">
-    <button id="clear-btn">Pulisci griglia</button>
-    <button id="invert-btn">Inverti</button>
-    <button id="copy-btn">Copia originale nel disegno</button>
-    <button id="preview-btn">Mostra anteprima testo</button>
-    <button id="export-btn" class="primary">Scarica JSON</button>
+    <button id="clear-btn">Clear grid</button>
+    <button id="invert-btn">Invert</button>
+    <button id="copy-btn">Copy original to drawing</button>
+    <button id="export-btn" class="primary">Download JSON</button>
   </div>
 
-  <div class="preview-box" id="preview-box"></div>
-  <div class="status" id="status"></div>
+    <div class="status" id="status"></div>
 
   <footer>
     Il file JSON generato contiene il codepoint Unicode e la griglia di pixel disegnata. I dati dei glifi provengono dai file Unifont caricati dal server (data/unifont_all_no_pua.hex, data/unifont_jp.hex, data/unifont_pua.hex) e non vengono mai modificati da questa pagina.
@@ -273,7 +271,6 @@ const emojiStatus = document.getElementById('emoji-status');
 const hexStatus = document.getElementById('hex-status');
 const labelInput = document.getElementById('label-input');
 const statusEl = document.getElementById('status');
-const previewBox = document.getElementById('preview-box');
 const gridEl = document.getElementById('grid');
 const previewGridEl = document.getElementById('preview-grid');
 const gridDimsEl = document.getElementById('grid-dims');
@@ -515,6 +512,7 @@ emojiInput.addEventListener('input', () => {
     hexInput.value = '';
     showFieldStatus(hexStatus, '', null);
     clearPreviewGrid();
+    buildDrawGrid(16,16);
     syncing = false;
     return;
   }
@@ -551,6 +549,7 @@ hexInput.addEventListener('input', () => {
     emojiInput.value = '';
     showFieldStatus(emojiStatus, '', null);
     clearPreviewGrid();
+    buildDrawGrid(16,16);
     syncing = false;
     return;
   }
@@ -614,16 +613,6 @@ document.getElementById('copy-btn').addEventListener('click', () => {
   statusEl.classList.remove('error');
 });
 
-document.getElementById('preview-btn').addEventListener('click', () => {
-  let txt = '';
-  for (let r = 0; r < drawHeight; r++) {
-    let line = '';
-    for (let c = 0; c < drawWidth; c++) line += drawState[r][c] ? '█' : '·';
-    txt += line + '\n';
-  }
-  previewBox.textContent = txt;
-  previewBox.style.display = previewBox.style.display === 'block' ? 'none' : 'block';
-});
 
 document.getElementById('export-btn').addEventListener('click', () => {
   const emojiVal = emojiInput.value.trim();
