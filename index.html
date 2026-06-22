@@ -131,6 +131,7 @@
     height: 20px;
     background: var(--grid-off);
     cursor: pointer;
+    touch-action: none;
   }
   .cell.on { background: var(--grid-on); }
   .cell:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
@@ -380,15 +381,21 @@ function buildDrawGrid(width, height) {
     for (let c = 0; c < width; c++) {
       const cell = document.createElement('div');
       cell.className = 'cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c;
       gridEl.appendChild(cell);
       cell.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        // On touch, the browser implicitly captures the pointer on the cell
+        // where the drag started, which makes elementFromPoint() during the
+        // drag keep returning that same cell instead of the one under the
+        // finger. Releasing capture explicitly fixes drag painting on mobile.
+        if (e.target.releasePointerCapture && e.pointerId !== undefined) {
+          try { e.target.releasePointerCapture(e.pointerId); } catch (err) {}
+        }
         isPointerDown = true;
         paintValue = drawState[r][c] ? 0 : 1;
         setDrawCell(r, c, paintValue);
-      });
-      cell.addEventListener('pointerenter', () => {
-        if (isPointerDown) setDrawCell(r, c, paintValue);
       });
       row.push(cell);
     }
@@ -396,6 +403,26 @@ function buildDrawGrid(width, height) {
   }
   gridDimsEl.textContent = `${width} × ${height}`;
 }
+
+// Continuous drag painting: pointerenter alone is unreliable for touch input
+// (the browser keeps pointer capture on the cell where the drag started), so
+// we track pointer position globally and resolve the cell under it ourselves.
+// This makes drag painting work consistently with both mouse and touch.
+function paintCellAtPoint(clientX, clientY) {
+  const el = document.elementFromPoint(clientX, clientY);
+  if (!el || !el.classList.contains('cell') || el.dataset.row === undefined) return;
+  const r = parseInt(el.dataset.row, 10);
+  const c = parseInt(el.dataset.col, 10);
+  if (r >= 0 && r < drawHeight && c >= 0 && c < drawWidth) {
+    setDrawCell(r, c, paintValue);
+  }
+}
+
+document.addEventListener('pointermove', (e) => {
+  if (!isPointerDown) return;
+  e.preventDefault();
+  paintCellAtPoint(e.clientX, e.clientY);
+}, { passive: false });
 
 function setDrawCell(r, c, value) {
   drawState[r][c] = value;
