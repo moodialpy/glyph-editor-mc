@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Genera Resource Pack — Minecraft Glyph Editor</title>
+<title>Generate Resource Pack — Minecraft Glyph Editor</title>
 <script src="libs/fflate.umd.js"></script>
 <style>
   :root {
@@ -60,7 +60,7 @@
     border-radius: 12px;
     padding: 18px 20px;
     margin-bottom: 16px;
-    width: 100%;
+    width: auto;
     max-width: 480px;
   }
   label { display: block; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 6px; }
@@ -107,7 +107,7 @@
 
   .pack-name-row { margin-top: 4px; }
   input[type="text"] {
-    width: 100%;
+    width: fit-content;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -127,10 +127,11 @@
     font-size: 0.88rem;
     cursor: pointer;
     margin-top: 16px;
-    width: 100%;
+    width: fit-content;
   }
   button.primary:hover { background: var(--accent); border-color: var(--accent); }
   button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.actions{text-align:center;}
 
   .status {
     margin-top: 14px;
@@ -189,7 +190,7 @@
     <div class="hint">L'icona del pack (pack.png) viene presa automaticamente da data/pack.png.</div>
   </div>
 
-  <button class="primary" id="generate-btn" disabled>Genera e scarica resource pack</button>
+  <button class="primary" id="generate-btn" disabled>Genera e scarica resource pack</button></div>
 
   <div class="status" id="status"></div>
   <div class="summary-box" id="summary-box"></div>
