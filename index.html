@@ -492,6 +492,11 @@ function lookupAndDisplay(codepointHex) {
   try {
     const { matrix, width, height } = hexDataToMatrix(entry.hexData);
     setPreviewMatrix(matrix, width, height);
+    // Ridimensiona anche la griglia di disegno se le dimensioni sono cambiate,
+    // così l'utente disegna subito nel formato corretto senza dover cliccare "copia".
+    if (width !== drawWidth || height !== drawHeight) {
+      buildDrawGrid(width, height);
+    }
     return { found: true, width, height, source: entry.source };
   } catch (err) {
     clearPreviewGrid();
@@ -569,6 +574,9 @@ hexInput.addEventListener('input', () => {
     const { matrix, width, height } = hexDataToMatrix(hexData);
     setPreviewMatrix(matrix, width, height);
     showFieldStatus(hexStatus, `Decodificato: griglia ${width}×${height}`, 'ok');
+    if (width !== drawWidth || height !== drawHeight) {
+      buildDrawGrid(width, height);
+    }
   } catch (err) {
     showFieldStatus(hexStatus, err.message, 'error');
     syncing = false;
