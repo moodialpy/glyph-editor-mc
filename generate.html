@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generate Resource Pack — Minecraft Glyph Editor</title>
+<script src="libs/fflate.umd.js"></script>
+<style>
+  :root {
+    --bg: #1b1b1f;
+    --panel: #26262c;
+    --accent: #6cc070;
+    --accent-dark: #4a9450;
+    --border: #3d3d44;
+    --text: #e8e8ec;
+    --text-dim: #9a9aa3;
+    --error: #e08080;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; font-weight: 600; }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    text-align: center;
+    max-width: 520px;
+  }
+  nav { margin-bottom: 16px; font-size: 0.8rem; }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+
+  .loading-banner {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    max-width: 460px;
+    text-align: center;
+  }
+  .loading-banner.error { color: var(--error); border-color: var(--error); }
+  .loading-banner.ok { color: var(--accent); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    width: 100%;
+    max-width: 480px;
+  }
+  label { display: block; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 6px; }
+  .hint { font-size: 0.72rem; color: var(--text-dim); margin-top: 6px; }
+
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(108,192,112,0.05); }
+  .dropzone-text { font-size: 0.85rem; color: var(--text-dim); }
+  input[type="file"] { display: none; }
+
+  .file-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+  .file-item .file-meta { color: var(--text-dim); font-size: 0.72rem; }
+  .file-item .file-name { font-weight: 600; }
+  .file-item .file-emoji { font-size: 1.1rem; margin-right: 6px; }
+  .file-item button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--error);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+  .file-item button:hover { border-color: var(--error); }
+  .file-item.error { border-color: var(--error); }
+  .file-item .file-name.error-text { color: var(--error); }
+
+  .pack-name-row { margin-top: 4px; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  input[type="text"]:focus { outline: 1px solid var(--accent); }
+
+  select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+  select:focus { outline: 1px solid var(--accent); }
+
+  /* Generate button: same footprint as a normal toolbar button, not a full-width banner. */
+  button.primary {
+    background: var(--accent-dark);
+    border: 1px solid var(--accent-dark);
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+  button.primary:hover { background: var(--accent); border-color: var(--accent); }
+  button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .status {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    color: var(--accent);
+    min-height: 18px;
+    text-align: center;
+    max-width: 480px;
+  }
+  .status.error { color: var(--error); }
+
+  .summary-box {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: none;
+    white-space: pre-wrap;
+  }
+
+  footer {
+    margin-top: 28px;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    text-align: center;
+    max-width: 480px;
+  }
+</style>
+</head>
+<body>
+
+  <nav><a href="index.html">&larr; Back to glyph editor</a></nav>
+
+  <h1>Generate Resource Pack</h1>
+  <p class="subtitle">Upload one or more JSON files exported from the glyph editor. Each codepoint is applied to the matching Unifont file and packaged into a resource pack ready for the Minecraft version you choose below.</p>
+
+  <div class="loading-banner" id="loading-banner">Loading Unifont data…</div>
+
+  <div class="panel">
+    <label>Glyph JSON files</label>
+    <div class="dropzone" id="dropzone">
+      <div class="dropzone-text">Click to choose files, or drag them here<br>(you can select more than one)</div>
+      <input type="file" id="file-input" accept=".json" multiple>
+    </div>
+    <div class="file-list" id="file-list"></div>
+  </div>
+
+  <div class="panel">
+    <div class="pack-name-row">
+      <label for="pack-name-input">Pack name (used for the downloaded file)</label>
+      <input type="text" id="pack-name-input" placeholder="minecraft-glyph-pack" value="minecraft-glyph-pack">
+    </div>
+    <div class="pack-name-row" style="margin-top: 14px;">
+      <label for="version-select">Target Minecraft version</label>
+      <select id="version-select"></select>
+      <div class="hint" id="version-hint"></div>
+    </div>
+    <div class="hint">The pack icon (pack.png) is taken automatically from data/pack.png.</div>
+  </div>
+
+  <button class="primary" id="generate-btn" disabled>Generate and download resource pack</button>
+
+  <div class="status" id="status"></div>
+  <div class="summary-box" id="summary-box"></div>
+
+  <footer>
+    Each glyph is applied by replacing the matching codepoint line in the source Unifont file (priority: main data, then Japanese patch, then private use area). pack.mcmeta is generated to match the Minecraft version selected above, including the switch from a single pack_format number (up to 1.21.8) to the min_format/max_format range (1.21.9 and later).
+  </footer>
+
+<script>
+// ============== UNIFONT DATA LOADING (same logic as index.html) ==============
+const HEX_SOURCES = [
+  { name: 'all_no_pua', path: 'data/unifont_all_no_pua.hex' },
+  { name: 'jp', path: 'data/unifont_jp.hex' },
+  { name: 'pua', path: 'data/unifont_pua.hex' }
+];
+
+// Map codepoint -> { hexData, source, lineIndex } — lineIndex is used for the precise replacement
+const glyphIndex = new Map();
+// Full text of each source file, split into lines, so we can replace and rebuild it
+const sourceLines = {}; // name -> array of lines (strings)
+
+const loadingBanner = document.getElementById('loading-banner');
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+const fileListEl = document.getElementById('file-list');
+const packNameInput = document.getElementById('pack-name-input');
+const versionSelect = document.getElementById('version-select');
+const versionHint = document.getElementById('version-hint');
+const generateBtn = document.getElementById('generate-btn');
+const statusEl = document.getElementById('status');
+const summaryBox = document.getElementById('summary-box');
+
+// Minecraft version -> pack format table
+// Verified against the official Minecraft Wiki (per-version "Java Edition X.Y" pages)
+// and the pack_format change introduced in 25w31a (single number -> min/max range,
+// effective from 1.21.9 onward).
+// "legacy" = true means pack.mcmeta uses a single "pack_format" number.
+// "legacy" = false means pack.mcmeta uses "min_format"/"max_format".
+// "format" is [major, minor] for non-legacy entries (minor 0 if not specified by the wiki),
+// or a plain integer for legacy entries.
+const VERSION_TABLE = [
+  { label: '26.2 (Chaos Cubed) — latest', format: [107, 1], legacy: false },
+  { label: '26.1 (Tiny Takeover)', format: [101, 1], legacy: false },
+  { label: '1.21.11', format: [75, 0], legacy: false },
+  { label: '1.21.9 – 1.21.10', format: [69, 0], legacy: false },
+  { label: '1.21.7 – 1.21.8', format: 64, legacy: true },
+  { label: '1.21.6', format: 63, legacy: true },
+  { label: '1.21.5', format: 55, legacy: true },
+  { label: '1.21.4', format: 46, legacy: true },
+  { label: '1.21.2 – 1.21.3', format: 42, legacy: true },
+  { label: '1.21 – 1.21.1', format: 34, legacy: true },
+  { label: '1.20.5 – 1.20.6', format: 32, legacy: true },
+  { label: '1.20.3 – 1.20.4', format: 22, legacy: true },
+  { label: '1.20.2', format: 18, legacy: true },
+  { label: '1.20 – 1.20.1', format: 15, legacy: true },
+  { label: '1.19.4', format: 13, legacy: true },
+  { label: '1.19.3', format: 12, legacy: true },
+  { label: '1.19 – 1.19.2', format: 9, legacy: true },
+  { label: '1.18 – 1.18.2', format: 8, legacy: true },
+  { label: '1.17 – 1.17.1', format: 7, legacy: true },
+  { label: '1.16.2 – 1.16.5', format: 6, legacy: true },
+  { label: '1.15 – 1.16.1', format: 5, legacy: true },
+  { label: '1.13 – 1.14.4', format: 4, legacy: true },
+  { label: '1.11 – 1.12.2', format: 3, legacy: true },
+  { label: '1.9 – 1.10.2', format: 2, legacy: true },
+  { label: '1.6.1 – 1.8.9', format: 1, legacy: true }
+];
+
+function formatLabel(v) {
+  return v.legacy ? String(v.format) : `[${v.format[0]}, ${v.format[1]}]`;
+}
+
+function populateVersionSelect() {
+  versionSelect.innerHTML = '';
+  VERSION_TABLE.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = v.label;
+    versionSelect.appendChild(opt);
+  });
+  versionSelect.value = '0'; // default: latest (26.2)
+  updateVersionHint();
+}
+
+function updateVersionHint() {
+  const v = VERSION_TABLE[parseInt(versionSelect.value, 10)];
+  if (v.legacy) {
+    versionHint.textContent = `pack_format: ${v.format}`;
+  } else {
+    versionHint.textContent = `min_format / max_format: ${formatLabel(v)}`;
+  }
+}
+
+versionSelect.addEventListener('change', updateVersionHint);
+
+async function loadHexFile(source) {
+  const res = await fetch(source.path);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${source.path}`);
+  const text = await res.text();
+  const lines = text.split('\n');
+  sourceLines[source.name] = lines;
+
+  let count = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const colonIndex = line.indexOf(':');
+    if (colonIndex === -1) continue;
+    const codepoint = line.slice(0, colonIndex).trim().toUpperCase().padStart(6, '0');
+    const hexData = line.slice(colonIndex + 1).trim().toUpperCase();
+    if (!/^[0-9A-F]+$/.test(hexData)) continue;
+    if (!glyphIndex.has(codepoint)) {
+      glyphIndex.set(codepoint, { hexData, source: source.name, lineIndex: i });
+      count++;
+    }
+  }
+  return count;
+}
+
+async function loadAllSources() {
+  const results = [];
+  for (const source of HEX_SOURCES) {
+    try {
+      const count = await loadHexFile(source);
+      results.push(`${source.name}: ${count} glyphs`);
+    } catch (err) {
+      results.push(`${source.name}: ERROR (${err.message})`);
+      throw err;
+    }
+  }
+  return results;
+}
+
+let packIcon = null; // ArrayBuffer of data/pack.png
+
+async function loadPackIcon() {
+  const res = await fetch('data/pack.png');
+  if (!res.ok) throw new Error(`HTTP ${res.status} for data/pack.png`);
+  packIcon = await res.arrayBuffer();
+}
+
+// ============== UPLOADED JSON FILES HANDLING ==============
+// Each entry: { fileName, valid, error, codepoint, emoji, label, gridWidth, gridHeight, hexData }
+let loadedGlyphs = [];
+
+function matrixToHexData(matrix, width, height) {
+  let bits = '';
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      bits += matrix[r][c] ? '1' : '0';
+    }
+  }
+  while (bits.length % 4 !== 0) bits += '0';
+  let hex = '';
+  for (let i = 0; i < bits.length; i += 4) {
+    hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+  }
+  return hex.toUpperCase();
+}
+
+function parseGlyphJson(fileName, text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    return { fileName, valid: false, error: 'Invalid JSON.' };
+  }
+
+  if (!data.codepoint || typeof data.codepoint !== 'string') {
+    return { fileName, valid: false, error: 'Missing or invalid "codepoint" field.' };
+  }
+  const codepoint = data.codepoint.trim().toUpperCase().padStart(6, '0');
+
+  // Supports both v2 (grid_width/grid_height/hex_data already computed) and v1 (grid_size, pixels 16x16)
+  let width, height, hexData;
+  if (typeof data.hex_data === 'string' && data.hex_data.trim()) {
+    hexData = data.hex_data.trim().toUpperCase();
+    width = data.grid_width || (data.grid_size || 16);
+    height = data.grid_height || (data.grid_size || 16);
+    if (!/^[0-9A-F]+$/.test(hexData)) {
+      return { fileName, valid: false, error: '"hex_data" field is not valid hexadecimal.' };
+    }
+  } else if (Array.isArray(data.pixels)) {
+    height = data.grid_height || data.grid_size || data.pixels.length;
+    width = data.grid_width || data.grid_size || (data.pixels[0] ? data.pixels[0].length : 0);
+    if (data.pixels.length !== height || data.pixels.some(row => row.length !== width)) {
+      return { fileName, valid: false, error: `Inconsistent pixel dimensions (expected ${width}x${height}).` };
+    }
+    hexData = matrixToHexData(data.pixels, width, height);
+  } else {
+    return { fileName, valid: false, error: 'No valid "hex_data" or "pixels" field found.' };
+  }
+
+  if ((width * height) % 4 !== 0) {
+    return { fileName, valid: false, error: `Invalid grid dimensions (${width}x${height}).` };
+  }
+
+  return {
+    fileName,
+    valid: true,
+    codepoint,
+    emoji: data.emoji || null,
+    label: data.label || null,
+    gridWidth: width,
+    gridHeight: height,
+    hexData
+  };
+}
+
+function renderFileList() {
+  fileListEl.innerHTML = '';
+  for (let i = 0; i < loadedGlyphs.length; i++) {
+    const g = loadedGlyphs[i];
+    const item = document.createElement('div');
+    item.className = 'file-item' + (g.valid ? '' : ' error');
+
+    const left = document.createElement('div');
+    if (g.valid) {
+      const emojiSpan = g.emoji ? `<span class="file-emoji">${g.emoji}</span>` : '';
+      left.innerHTML = `${emojiSpan}<span class="file-name">U+${g.codepoint}</span> <span class="file-meta">${g.gridWidth}×${g.gridHeight} — ${g.label || g.fileName}</span>`;
+    } else {
+      left.innerHTML = `<span class="file-name error-text">${g.fileName}</span> <span class="file-meta">${g.error}</span>`;
+    }
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => {
+      loadedGlyphs.splice(i, 1);
+      renderFileList();
+      updateGenerateButtonState();
+    });
+
+    item.appendChild(left);
+    item.appendChild(removeBtn);
+    fileListEl.appendChild(item);
+  }
+}
+
+function updateGenerateButtonState() {
+  const validCount = loadedGlyphs.filter(g => g.valid).length;
+  generateBtn.disabled = validCount === 0;
+}
+
+async function handleFiles(fileObjs) {
+  for (const file of fileObjs) {
+    if (!file.name.toLowerCase().endsWith('.json')) continue;
+    const text = await file.text();
+    const parsed = parseGlyphJson(file.name, text);
+    loadedGlyphs.push(parsed);
+  }
+  renderFileList();
+  updateGenerateButtonState();
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+  handleFiles(Array.from(e.target.files));
+  fileInput.value = '';
+});
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(Array.from(e.dataTransfer.files));
+});
+
+// ============== RESOURCE PACK GENERATION ==============
+function buildDefaultJson() {
+  // Same structure used in previous packs: space + default (non-uniform) + custom unihex
+  return JSON.stringify({
+    providers: [
+      { type: "reference", id: "minecraft:include/space" },
+      { type: "reference", id: "minecraft:include/default", filter: { uniform: false } },
+      { type: "unihex", hex_file: "minecraft:font/unifont.zip" }
+    ]
+  }, null, 4);
+}
+
+function buildPackMcmeta(description) {
+  const v = VERSION_TABLE[parseInt(versionSelect.value, 10)];
+  const pack = { description: description };
+  if (v.legacy) {
+    pack.pack_format = v.format;
+  } else {
+    pack.min_format = v.format;
+    pack.max_format = v.format;
+  }
+  return JSON.stringify({ pack }, null, 4);
+}
+
+async function generatePack() {
+  statusEl.textContent = '';
+  statusEl.classList.remove('error');
+  summaryBox.style.display = 'none';
+
+  const validGlyphs = loadedGlyphs.filter(g => g.valid);
+  if (validGlyphs.length === 0) {
+    statusEl.textContent = 'No valid glyphs to apply.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  // Working copy of each source file's lines, so we don't touch the original index
+  const workingLines = {};
+  for (const name of Object.keys(sourceLines)) {
+    workingLines[name] = sourceLines[name].slice(); // shallow copy
+  }
+
+  const applied = [];
+  const notFound = [];
+
+  for (const g of validGlyphs) {
+    const entry = glyphIndex.get(g.codepoint);
+    const newLine = `${g.codepoint}:${g.hexData}`;
+
+    if (entry) {
+      // Codepoint already present in one of the original files: replace that exact line
+      workingLines[entry.source][entry.lineIndex] = newLine;
+      applied.push(`U+${g.codepoint} -> replaced in ${entry.source}`);
+    } else {
+      // New codepoint, not present in any file: add it to the main file
+      workingLines['all_no_pua'].push(newLine);
+      applied.push(`U+${g.codepoint} -> added to all_no_pua (new)`);
+      notFound.push(g.codepoint);
+    }
+  }
+
+  // Rebuild the text of the modified files
+  const allNoPuaText = workingLines['all_no_pua'].join('\n');
+
+  // Build the unifont.zip archive (main file only, as in previous packs)
+  const encoder = new TextEncoder();
+  const unifontZipData = fflate.zipSync({
+    'unifont_all_no_pua.hex': encoder.encode(allNoPuaText)
+  }, { level: 6 });
+
+  // Build the final resource pack zip
+  const packName = (packNameInput.value.trim() || 'minecraft-glyph-pack').replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const description = `Modified glyphs: ${validGlyphs.map(g => 'U+' + g.codepoint).join(', ')}`;
+
+  const files = {
+    'pack.mcmeta': encoder.encode(buildPackMcmeta(description)),
+    'assets/minecraft/font/default.json': encoder.encode(buildDefaultJson()),
+    'assets/minecraft/font/unifont.zip': unifontZipData
+  };
+
+  if (packIcon) {
+    files['pack.png'] = new Uint8Array(packIcon);
+  }
+
+  const finalZip = fflate.zipSync(files, { level: 6 });
+
+  const blob = new Blob([finalZip], { type: 'application/zip' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${packName}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  statusEl.textContent = `Resource pack generated: ${packName}.zip (${validGlyphs.length} glyphs applied)`;
+  statusEl.classList.remove('error');
+
+  summaryBox.style.display = 'block';
+  summaryBox.textContent = applied.join('\n') + (notFound.length ? `\n\nNote: ${notFound.length} codepoint(s) were not present in the original files and were added as new.` : '');
+}
+
+generateBtn.addEventListener('click', () => {
+  generatePack().catch(err => {
+    statusEl.textContent = `Error during generation: ${err.message}`;
+    statusEl.classList.add('error');
+  });
+});
+
+// ============== INITIALIZATION ==============
+populateVersionSelect();
+
+Promise.all([loadAllSources(), loadPackIcon()]).then(([results]) => {
+  loadingBanner.textContent = `Data loaded — ${results.join(' | ')}`;
+  loadingBanner.classList.add('ok');
+}).catch((err) => {
+  loadingBanner.textContent = `Error loading data: ${err.message}`;
+  loadingBanner.classList.add('error');
+});
+</script>
+
+</body>
+</html>
